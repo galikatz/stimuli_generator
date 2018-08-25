@@ -240,7 +240,6 @@ public class StimuliGenerator {
         }
         return imagesList;
     }
-
     /**
      * Creates images from the list of circles
      * @return list of images

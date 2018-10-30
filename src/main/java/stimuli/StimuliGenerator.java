@@ -256,9 +256,27 @@ public class StimuliGenerator {
             graphics2D.fillOval(circle.getCenterX(), circle.getCenterY(), circle.getRadius(), circle.getRadius());
             area+=(Math.PI*circle.getRadius()*circle.getRadius());
         }
+        double convexHull = calculateConvexHull(circles);
         graphics2D.dispose();
-        imageData = new ImageData(circles.size(),image, area);
+        imageData = new ImageData(circles.size(),image, area, convexHull);
         return imageData;
+    }
+
+    private double calculateConvexHull(List<Circle> circles) {
+        List<Point> points  = new ArrayList<>(circles.size());
+        for(Circle circle : circles){
+            Point p = new Point(circle.getCenterX(), circle.getCenterY());
+            points.add(p);
+        }
+        Point[] pointsArr = points.toArray(new Point[points.size()]);
+        List<Point> pointsOrder = ConvexHullCalculator.convexHull(pointsArr);
+        double d = 0.0;
+        if(pointsOrder!=null) {
+            d = ConvexHullCalculator.convexHullLength(pointsOrder);
+        }else{//2 points only
+            d = ConvexHullCalculator.convexHullLength(points);
+        }
+        return d;
     }
 
     public ImageData createImageB(ImageData imageDataA, boolean isCongruent){
@@ -317,10 +335,12 @@ public class StimuliGenerator {
                 ImageData imageDataB = imageDataPair.getValue();
                 String areaAstring = df.format(imageDataA.getArea());
                 String areaBstring = df.format(imageDataB.getArea());
+                String convexHullA = df.format(imageDataA.getConvexHull());
+                String convexHullB = df.format(imageDataB.getConvexHull());
                 ImageIO.write(imageDataA.getImage(), "png", new File(imagesDirPath+fileNamePrefix+"_index_"+(startIndex+i)+
-                        "_A_circles_"+imageDataA.getNumOfCircles()+"_area_"+areaAstring+".png"));
+                        "_A_circles_"+imageDataA.getNumOfCircles()+"_area_"+areaAstring+"_convex_hull_"+convexHullA+".png"));
                 ImageIO.write(imageDataB.getImage(), "png", new File(imagesDirPath+fileNamePrefix+"_index_"+(startIndex+i)+
-                        "_B_circles_"+imageDataB.getNumOfCircles()+"_area_"+areaBstring+".png"));
+                        "_B_circles_"+imageDataB.getNumOfCircles()+"_area_"+areaBstring+"_convex_hull_"+convexHullB+".png"));
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -329,7 +349,7 @@ public class StimuliGenerator {
 
     public static void main(String[] args) throws IOException {
         Properties properties = new Properties();
-        properties.load(new FileInputStream("/Users/gali.k/phd/StimuliGenerator/src/resources/stimuliGenerator.properties"));
+        properties.load(new FileInputStream("/Users/gali.k/phd/stimuli_generator/src/main/resources/stimuliGenerator.properties"));
 
         StimuliGenerator stimuliGenerator = new StimuliGenerator(
                 Integer.parseInt(properties.getProperty(SCREEN_X_KEY)),
@@ -340,7 +360,6 @@ public class StimuliGenerator {
                 properties.getProperty(IMAGE_DIR_KEY),
                 Boolean.parseBoolean(properties.getProperty(CONGRUENCY_KEY)),
                 Integer.parseInt(properties.getProperty(START_INDEX_KEY)));
-
 
         int iterations = 0;
         int index = 0;
@@ -466,11 +485,13 @@ public class StimuliGenerator {
         private int numOfCircles;
         private BufferedImage image;
         private double area;
+        private double convexHull;
 
-        public ImageData(int numOfCircles, BufferedImage image, double area) {
+        public ImageData(int numOfCircles, BufferedImage image, double area, double convexHull) {
             this.numOfCircles = numOfCircles;
             this.image = image;
             this.area = area;
+            this.convexHull = convexHull;
         }
 
         public int getNumOfCircles() {
@@ -489,8 +510,14 @@ public class StimuliGenerator {
         public String toString() {
             return "ImageData{" +
                     "numOfCircles=" + numOfCircles +
+                    ", image=" + image +
                     ", area=" + area +
+                    ", convexHull=" + convexHull +
                     '}';
+        }
+
+        public double getConvexHull() {
+            return convexHull;
         }
     }
 }

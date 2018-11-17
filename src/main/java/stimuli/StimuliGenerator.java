@@ -29,11 +29,13 @@ public class StimuliGenerator {
     private static final String IMAGE_DIR_KEY = "imageDir";
     private static final String CONGRUENCY_KEY = "isCongruent";
     private static final String START_INDEX_KEY = "startIndex";
+    private static final String IS_SINGLE_MODE_KEY = "isSingleMode";
 
 
     private static final double SMALLET_AREA = 2*Math.PI*MIN_RADIUS*MIN_RADIUS;
     private static final int BUFFER = 10;//pixels
     private static final int MAX_ITERATIONS = 5;
+    private static final int FEW_FACTOR = 5;
     private int screenX;
     private int screenY;
     private int fromNumber;
@@ -44,9 +46,13 @@ public class StimuliGenerator {
     private boolean isCongruent;
     private double MIN_AREA =  2*Math.PI*(MIN_RADIUS)*(MIN_RADIUS);
     private int startIndex = 0;
+    private boolean isSignleMode = false;
 
-
-    public StimuliGenerator(int screenX, int screenY, int fromNumber, int toNumber, int numOfStimuli, String imagesDirPath, boolean isCongruent, int startIndex) {
+    public StimuliGenerator(int screenX, int screenY,
+                            int fromNumber, int toNumber,
+                            int numOfStimuli, String imagesDirPath,
+                            boolean isCongruent, int startIndex,
+                            boolean isSingleMode) {
         this.screenX = screenX;
         this.screenY = screenY;
         this.fromNumber = fromNumber;
@@ -56,6 +62,7 @@ public class StimuliGenerator {
         this.random = new Random();
         this.isCongruent = isCongruent;
         this.startIndex = startIndex;
+        this.isSignleMode = isSingleMode;
     }
 
     public int getNumOfStimuli() {
@@ -68,6 +75,10 @@ public class StimuliGenerator {
 
     public void setStartIndex(int startIndex) {
         this.startIndex = startIndex;
+    }
+
+    public boolean isSignleMode() {
+        return isSignleMode;
     }
 
     /**
@@ -230,11 +241,14 @@ public class StimuliGenerator {
      * Creates images from the list of circles
      * @return list of images
      */
-    public List<Pair<ImageData,ImageData>> createImages(List<List<Circle>> circles) {
+    public List<Pair<ImageData,ImageData>> createImages(List<List<Circle>> circles, boolean isSingleMode) {
         List<Pair<ImageData,ImageData>> imagesList = new ArrayList<>();
         for (List<Circle> circleInImage: circles) {
             ImageData imageA = createImage(circleInImage);
-            ImageData imageB = createImageB(imageA, this.isCongruent);
+            ImageData imageB = null;
+            if(!isSingleMode) {
+                imageB = createImageB(imageA, this.isCongruent);
+            }
             Pair<ImageData, ImageData> pairOfImages = new Pair<>(imageA, imageB);
             imagesList.add(pairOfImages);
         }
@@ -321,30 +335,47 @@ public class StimuliGenerator {
         return imageDataB;
     }
 
-    /**
-     * Saving the images to files.
-     * @param images
-     */
-    public void saveImages(List<Pair<ImageData, ImageData>> images, String fileNamePrefix){
+    public void saveImages(List<Pair<ImageData, ImageData>> images, boolean isSignleMode, boolean isCongruent, String additionalPrefix) {
+        String fileNamePrefix = additionalPrefix;
         DecimalFormat df = new DecimalFormat("#.##");
         df.setRoundingMode(RoundingMode.FLOOR);
         for(int i=0; i<images.size(); i++) {
             try {
                 Pair<ImageData, ImageData> imageDataPair = images.get(i);
                 ImageData imageDataA = imageDataPair.getKey();
-                ImageData imageDataB = imageDataPair.getValue();
-                String areaAstring = df.format(imageDataA.getArea());
-                String areaBstring = df.format(imageDataB.getArea());
-                String convexHullA = df.format(imageDataA.getConvexHull());
-                String convexHullB = df.format(imageDataB.getConvexHull());
-                ImageIO.write(imageDataA.getImage(), "png", new File(imagesDirPath+fileNamePrefix+"_index_"+(startIndex+i)+
-                        "_A_circles_"+imageDataA.getNumOfCircles()+"_area_"+areaAstring+"_convex_hull_"+convexHullA+".png"));
-                ImageIO.write(imageDataB.getImage(), "png", new File(imagesDirPath+fileNamePrefix+"_index_"+(startIndex+i)+
-                        "_B_circles_"+imageDataB.getNumOfCircles()+"_area_"+areaBstring+"_convex_hull_"+convexHullB+".png"));
+                if(isSignleMode){
+                    fileNamePrefix += "img";
+                    String fewOrManyPrefix = "_few_";
+                    if(imageDataA.getNumOfCircles()>FEW_FACTOR){
+                        fewOrManyPrefix = "_many_";
+                    }
+                    ImageIO.write(imageDataA.getImage(),
+                            "png", new File(imagesDirPath +
+                                    fileNamePrefix + "_index_" + (startIndex + i) +
+                                    fewOrManyPrefix+"_circles_" + imageDataA.getNumOfCircles()+".png"));
+                }else {
+                    fileNamePrefix += isCongruent? "cong" : "incong";
+                    ImageData imageDataB = imageDataPair.getValue();
+                    String areaAstring = df.format(imageDataA.getArea());
+                    String areaBstring = df.format(imageDataB.getArea());
+                    String convexHullA = df.format(imageDataA.getConvexHull());
+                    String convexHullB = df.format(imageDataB.getConvexHull());
+                    ImageIO.write(imageDataA.getImage(), "png", new File(imagesDirPath + fileNamePrefix + "_index_" + (startIndex + i) +
+                            "_A_circles_" + imageDataA.getNumOfCircles() + "_area_" + areaAstring + "_convex_hull_" + convexHullA + ".png"));
+                    ImageIO.write(imageDataB.getImage(), "png", new File(imagesDirPath + fileNamePrefix + "_index_" + (startIndex + i) +
+                            "_B_circles_" + imageDataB.getNumOfCircles() + "_area_" + areaBstring + "_convex_hull_" + convexHullB + ".png"));
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
+    }
+        /**
+         * Saving the images to files.
+         * @param images
+         */
+    public void saveImages(List<Pair<ImageData, ImageData>> images, boolean isSignleMode, boolean isCongruent){
+        saveImages(images, isSignleMode, isCongruent,"");
     }
 
     public static void main(String[] args) throws IOException {
@@ -359,7 +390,9 @@ public class StimuliGenerator {
                 Integer.parseInt(properties.getProperty(NUMBER_OF_STIMULI_KEY)),
                 properties.getProperty(IMAGE_DIR_KEY),
                 Boolean.parseBoolean(properties.getProperty(CONGRUENCY_KEY)),
-                Integer.parseInt(properties.getProperty(START_INDEX_KEY)));
+                Integer.parseInt(properties.getProperty(START_INDEX_KEY)),
+                Boolean.parseBoolean(properties.getProperty(IS_SINGLE_MODE_KEY)));
+
 
         int iterations = 0;
         int index = 0;
@@ -367,11 +400,11 @@ public class StimuliGenerator {
             int currentStimuliSize = 0;
             System.out.println("Iteration: "+iterations);
             List<List<Circle>> circles = stimuliGenerator.generateRandomCircleDimentions();
-            List<Pair<ImageData, ImageData>> images = stimuliGenerator.createImages(circles);
-            List<Pair<ImageData, ImageData>> validImages = checkValiditiy(stimuliGenerator.isCongruent(), images);
+            List<Pair<ImageData, ImageData>> images = stimuliGenerator.createImages(circles, stimuliGenerator.isSignleMode());
+            List<Pair<ImageData, ImageData>> validImages = checkValiditiy(stimuliGenerator.isCongruent(), images, stimuliGenerator.isSignleMode());
             currentStimuliSize = validImages.size();
             index+=validImages.size();
-            stimuliGenerator.saveImages(validImages, stimuliGenerator.isCongruent() ? "cong" : "incong");
+            stimuliGenerator.saveImages(validImages, stimuliGenerator.isSignleMode(), stimuliGenerator.isCongruent());
             iterations++;
             System.out.println("Setting start index to be: "+index);
             stimuliGenerator.setStartIndex(index);
@@ -383,7 +416,10 @@ public class StimuliGenerator {
 
     }
 
-    private static List<Pair<ImageData, ImageData>> checkValiditiy(boolean congruent, List<Pair<ImageData, ImageData>> images) {
+    private static List<Pair<ImageData, ImageData>> checkValiditiy(boolean congruent, List<Pair<ImageData, ImageData>> images, boolean isSignleMode) {
+        if(isSignleMode){
+            return images;
+        }
         List<Pair<ImageData, ImageData>> validateImages = new ArrayList<>();
         for(Pair<ImageData, ImageData> pair: images) {
             ImageData imageA = pair.getKey();

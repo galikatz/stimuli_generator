@@ -15,11 +15,11 @@ import stimuli.StimuliGenerator;
  * Created by gali.k on 1/28/18.
  */
 public class StimuliGeneratorTest{
-    private static final String TEST_PATH = "/Users/gali.k/phd/StimuliGenerator/src/resources/test/";
+    private static final String TEST_PATH = "/Users/gali.k/phd/stimuli_generator/src/test/resources/";
     private static final int SCREEN_X = 500;
     private static final int SCREEN_Y = 500;
 
-    private StimuliGenerator stimuliGenerator  = new StimuliGenerator(SCREEN_X,SCREEN_Y,2,4,10, TEST_PATH, true, 0);
+    private StimuliGenerator stimuliGenerator  = new StimuliGenerator(SCREEN_X,SCREEN_Y,2,4,10, TEST_PATH, true, 0, false);
     private List<List<StimuliGenerator.Circle>> circles;
     private List<StimuliGenerator.Circle> circlesInImage;
 
@@ -65,8 +65,8 @@ public class StimuliGeneratorTest{
         StimuliGenerator.Circle c2 = new StimuliGenerator.Circle(309,89,38);
         circles.add(circlesInImage);
         stimuliGenerator.printCircleList(circles);
-        List<Pair<StimuliGenerator.ImageData, StimuliGenerator.ImageData>> images = stimuliGenerator.createImages(circles);
-        stimuliGenerator.saveImages(images,"overlapTestWithEpsilon");
+        List<Pair<StimuliGenerator.ImageData, StimuliGenerator.ImageData>> images = stimuliGenerator.createImages(circles, false);
+        stimuliGenerator.saveImages(images, stimuliGenerator.isSignleMode(), stimuliGenerator.isCongruent(), "overlapTestWithEpsilon_");
         Assert.assertTrue("circles should overlap "+ c1.toString()+" "+ c2.toString(),stimuliGenerator.checkOverlap(c1,c2));
     }
 
@@ -78,8 +78,8 @@ public class StimuliGeneratorTest{
         circlesInImage.add(c2);
         circles.add(circlesInImage);
         stimuliGenerator.printCircleList(circles);
-        List<Pair<StimuliGenerator.ImageData, StimuliGenerator.ImageData>> images = stimuliGenerator.createImages(circles);
-        stimuliGenerator.saveImages(images, "noOverlapTest");
+        List<Pair<StimuliGenerator.ImageData, StimuliGenerator.ImageData>> images = stimuliGenerator.createImages(circles, false);
+        stimuliGenerator.saveImages(images,  stimuliGenerator.isSignleMode(), stimuliGenerator.isCongruent(), "noOverlapTest_");
         Assert.assertFalse("circles should not overlap "+ c1.toString()+" "+ c2.toString(),stimuliGenerator.checkOverlap(c1,c2));
     }
 

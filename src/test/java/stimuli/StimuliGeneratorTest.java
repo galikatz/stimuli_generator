@@ -8,7 +8,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import javafx.util.Pair;
-import stimuli.StimuliGenerator;
 
 
 /**
@@ -19,7 +18,7 @@ public class StimuliGeneratorTest{
     private static final int SCREEN_X = 500;
     private static final int SCREEN_Y = 500;
 
-    private StimuliGenerator stimuliGenerator  = new StimuliGenerator(SCREEN_X,SCREEN_Y,2,4,10, TEST_PATH, true, 0, false);
+    private StimuliGenerator stimuliGenerator  = new StimuliGenerator(SCREEN_X,SCREEN_Y,2,4,10, TEST_PATH, true, 0, false, 6);
     private List<List<StimuliGenerator.Circle>> circles;
     private List<StimuliGenerator.Circle> circlesInImage;
 
@@ -66,7 +65,7 @@ public class StimuliGeneratorTest{
         circles.add(circlesInImage);
         stimuliGenerator.printCircleList(circles);
         List<Pair<StimuliGenerator.ImageData, StimuliGenerator.ImageData>> images = stimuliGenerator.createImages(circles, false);
-        stimuliGenerator.saveImages(images, stimuliGenerator.isSignleMode(), stimuliGenerator.isCongruent(), "overlapTestWithEpsilon_");
+        stimuliGenerator.saveImages(images, stimuliGenerator.isSingleMode(), stimuliGenerator.isCongruent(), stimuliGenerator.getFewFactor(), "overlapTestWithEpsilon_");
         Assert.assertTrue("circles should overlap "+ c1.toString()+" "+ c2.toString(),stimuliGenerator.checkOverlap(c1,c2));
     }
 
@@ -79,7 +78,7 @@ public class StimuliGeneratorTest{
         circles.add(circlesInImage);
         stimuliGenerator.printCircleList(circles);
         List<Pair<StimuliGenerator.ImageData, StimuliGenerator.ImageData>> images = stimuliGenerator.createImages(circles, false);
-        stimuliGenerator.saveImages(images,  stimuliGenerator.isSignleMode(), stimuliGenerator.isCongruent(), "noOverlapTest_");
+        stimuliGenerator.saveImages(images,  stimuliGenerator.isSingleMode(), stimuliGenerator.isCongruent(), stimuliGenerator.getFewFactor(), "noOverlapTest_");
         Assert.assertFalse("circles should not overlap "+ c1.toString()+" "+ c2.toString(),stimuliGenerator.checkOverlap(c1,c2));
     }
 

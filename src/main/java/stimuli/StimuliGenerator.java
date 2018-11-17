@@ -20,7 +20,7 @@ import javax.imageio.ImageIO;
  * Created by gali.k on 1/20/18.
  */
 public class StimuliGenerator {
-    private static final int MIN_RADIUS = 10;
+    private static final int MIN_RADIUS = 5;
     private static final String SCREEN_X_KEY = "screen.x";
     private static final String SCREEN_Y_KEY = "screen.y";
     private static final String FROM_NUMBER_KEY = "fromNumber";
@@ -30,12 +30,12 @@ public class StimuliGenerator {
     private static final String CONGRUENCY_KEY = "isCongruent";
     private static final String START_INDEX_KEY = "startIndex";
     private static final String IS_SINGLE_MODE_KEY = "isSingleMode";
-
+    private static final String FEW_FACTOR_KEY = "fewFactor";
 
     private static final double SMALLET_AREA = 2*Math.PI*MIN_RADIUS*MIN_RADIUS;
     private static final int BUFFER = 10;//pixels
-    private static final int MAX_ITERATIONS = 5;
-    private static final int FEW_FACTOR = 5;
+    private static final int MAX_ITERATIONS = 100;
+
     private int screenX;
     private int screenY;
     private int fromNumber;
@@ -45,14 +45,16 @@ public class StimuliGenerator {
     private Random random;
     private boolean isCongruent;
     private double MIN_AREA =  2*Math.PI*(MIN_RADIUS)*(MIN_RADIUS);
-    private int startIndex = 0;
-    private boolean isSignleMode = false;
+    private int startIndex;
+    private boolean isSingleMode;
+    private int fewFactor;
 
     public StimuliGenerator(int screenX, int screenY,
                             int fromNumber, int toNumber,
                             int numOfStimuli, String imagesDirPath,
                             boolean isCongruent, int startIndex,
-                            boolean isSingleMode) {
+                            boolean isSingleMode,
+                            int fewFactor) {
         this.screenX = screenX;
         this.screenY = screenY;
         this.fromNumber = fromNumber;
@@ -62,7 +64,8 @@ public class StimuliGenerator {
         this.random = new Random();
         this.isCongruent = isCongruent;
         this.startIndex = startIndex;
-        this.isSignleMode = isSingleMode;
+        this.isSingleMode = isSingleMode;
+        this.fewFactor = fewFactor;
     }
 
     public int getNumOfStimuli() {
@@ -73,27 +76,48 @@ public class StimuliGenerator {
         this.numOfStimuli = numOfStimuli;
     }
 
+    public int getFewFactor() {
+        return fewFactor;
+    }
+
     public void setStartIndex(int startIndex) {
         this.startIndex = startIndex;
     }
 
-    public boolean isSignleMode() {
-        return isSignleMode;
+    public boolean isSingleMode() {
+        return isSingleMode;
     }
 
+    public int getStartIndex(){
+        return startIndex;
+    }
     /**
      * Generates the circles (to interceptions allowed).
      * @return a list of circles
      */
-    private List<List<Circle>> generateRandomCircleDimentions(){
+    private List<List<Circle>> generateRandomCircleDimensions(){
         List<List<Circle>> circles = new ArrayList<>();
-        for(int i=0; i<numOfStimuli; i++) {
+        while(circles.size()<numOfStimuli) {//num of images
             int numberOfCirclesInImage = random.ints(fromNumber, toNumber+1).findFirst().getAsInt();
             System.out.println("Generated num of circles in image: "+numberOfCirclesInImage);
             List<Circle> currentImageCirclesList = new ArrayList<>();
             //generate CenterX
-            Circle newCircle = generateRandomCircle();
-            currentImageCirclesList = recursiveGenerateRandomCirclesForImage(newCircle, currentImageCirclesList, numberOfCirclesInImage);
+            Circle newCircle;
+            boolean overlap;
+            while(currentImageCirclesList.size()<numberOfCirclesInImage) {
+                overlap = false;
+                newCircle = generateRandomCircle();
+                for (Circle c : currentImageCirclesList){
+                    if (checkOverlap(c, newCircle)) {
+                        overlap = true;
+                        break;
+                    }
+                }
+                if(!overlap) {//no overlap - add to list
+                    currentImageCirclesList.add(newCircle);
+                }
+                //currentImageCirclesList = recursiveGenerateRandomCirclesForImage(newCircle, currentImageCirclesList, numberOfCirclesInImage);
+            }
             if(!overlapsExists(currentImageCirclesList)){
                 circles.add(currentImageCirclesList);
             }
@@ -335,34 +359,32 @@ public class StimuliGenerator {
         return imageDataB;
     }
 
-    public void saveImages(List<Pair<ImageData, ImageData>> images, boolean isSignleMode, boolean isCongruent, String additionalPrefix) {
-        String fileNamePrefix = additionalPrefix;
+    public void saveImages(List<Pair<ImageData, ImageData>> images, boolean isSingleMode, boolean isCongruent, int fewFactor, String additionalPrefix) {
         DecimalFormat df = new DecimalFormat("#.##");
         df.setRoundingMode(RoundingMode.FLOOR);
         for(int i=0; i<images.size(); i++) {
             try {
                 Pair<ImageData, ImageData> imageDataPair = images.get(i);
                 ImageData imageDataA = imageDataPair.getKey();
-                if(isSignleMode){
-                    fileNamePrefix += "img";
-                    String fewOrManyPrefix = "_few_";
-                    if(imageDataA.getNumOfCircles()>FEW_FACTOR){
-                        fewOrManyPrefix = "_many_";
+                if(isSingleMode){
+                    String fewOrManyPrefix = "_few";
+                    if(imageDataA.getNumOfCircles()>fewFactor){
+                        fewOrManyPrefix = "_many";
                     }
                     ImageIO.write(imageDataA.getImage(),
                             "png", new File(imagesDirPath +
-                                    fileNamePrefix + "_index_" + (startIndex + i) +
-                                    fewOrManyPrefix+"_circles_" + imageDataA.getNumOfCircles()+".png"));
+                                    additionalPrefix + "index_" + (startIndex + i) +
+                                    fewOrManyPrefix +"_circles_" + imageDataA.getNumOfCircles()+".png"));
                 }else {
-                    fileNamePrefix += isCongruent? "cong" : "incong";
+                    String congruency_prefix = isCongruent? "cong" : "incong";
                     ImageData imageDataB = imageDataPair.getValue();
                     String areaAstring = df.format(imageDataA.getArea());
                     String areaBstring = df.format(imageDataB.getArea());
                     String convexHullA = df.format(imageDataA.getConvexHull());
                     String convexHullB = df.format(imageDataB.getConvexHull());
-                    ImageIO.write(imageDataA.getImage(), "png", new File(imagesDirPath + fileNamePrefix + "_index_" + (startIndex + i) +
+                    ImageIO.write(imageDataA.getImage(), "png", new File(imagesDirPath + additionalPrefix + "_"+ congruency_prefix+  "_index_" + (startIndex + i) +
                             "_A_circles_" + imageDataA.getNumOfCircles() + "_area_" + areaAstring + "_convex_hull_" + convexHullA + ".png"));
-                    ImageIO.write(imageDataB.getImage(), "png", new File(imagesDirPath + fileNamePrefix + "_index_" + (startIndex + i) +
+                    ImageIO.write(imageDataB.getImage(), "png", new File(imagesDirPath + additionalPrefix + "_"+ congruency_prefix + "_index_" + (startIndex + i) +
                             "_B_circles_" + imageDataB.getNumOfCircles() + "_area_" + areaBstring + "_convex_hull_" + convexHullB + ".png"));
                 }
             } catch (IOException e) {
@@ -374,8 +396,8 @@ public class StimuliGenerator {
          * Saving the images to files.
          * @param images
          */
-    public void saveImages(List<Pair<ImageData, ImageData>> images, boolean isSignleMode, boolean isCongruent){
-        saveImages(images, isSignleMode, isCongruent,"");
+    public void saveImages(List<Pair<ImageData, ImageData>> images, boolean isSignleMode, boolean isCongruent, int fewFactor){
+        saveImages(images, isSignleMode, isCongruent, fewFactor, "");
     }
 
     public static void main(String[] args) throws IOException {
@@ -391,23 +413,24 @@ public class StimuliGenerator {
                 properties.getProperty(IMAGE_DIR_KEY),
                 Boolean.parseBoolean(properties.getProperty(CONGRUENCY_KEY)),
                 Integer.parseInt(properties.getProperty(START_INDEX_KEY)),
-                Boolean.parseBoolean(properties.getProperty(IS_SINGLE_MODE_KEY)));
+                Boolean.parseBoolean(properties.getProperty(IS_SINGLE_MODE_KEY)),
+                Integer.parseInt(properties.getProperty(FEW_FACTOR_KEY)));
 
 
         int iterations = 0;
-        int index = 0;
+        int index = stimuliGenerator.getStartIndex();
         while (stimuliGenerator.getNumOfStimuli() > 0 && iterations<MAX_ITERATIONS) {
             int currentStimuliSize = 0;
             System.out.println("Iteration: "+iterations);
-            List<List<Circle>> circles = stimuliGenerator.generateRandomCircleDimentions();
-            List<Pair<ImageData, ImageData>> images = stimuliGenerator.createImages(circles, stimuliGenerator.isSignleMode());
-            List<Pair<ImageData, ImageData>> validImages = checkValiditiy(stimuliGenerator.isCongruent(), images, stimuliGenerator.isSignleMode());
+            List<List<Circle>> circles = stimuliGenerator.generateRandomCircleDimensions();
+            List<Pair<ImageData, ImageData>> images = stimuliGenerator.createImages(circles, stimuliGenerator.isSingleMode());
+            List<Pair<ImageData, ImageData>> validImages = checkValiditiy(stimuliGenerator.isCongruent(), images, stimuliGenerator.isSingleMode());
             currentStimuliSize = validImages.size();
             index+=validImages.size();
-            stimuliGenerator.saveImages(validImages, stimuliGenerator.isSignleMode(), stimuliGenerator.isCongruent());
+            stimuliGenerator.saveImages(validImages, stimuliGenerator.isSingleMode(), stimuliGenerator.isCongruent(), stimuliGenerator.getFewFactor());
             iterations++;
             System.out.println("Setting start index to be: "+index);
-            stimuliGenerator.setStartIndex(index);
+            stimuliGenerator.setStartIndex(index+1);
             int stimuliLeft = stimuliGenerator.getNumOfStimuli() - currentStimuliSize;
             stimuliGenerator.setNumOfStimuli(stimuliLeft);
             System.out.println("Num of Stimuli left to create: "+ stimuliLeft +" Iterations: "+iterations);
@@ -456,6 +479,18 @@ public class StimuliGenerator {
                     foundOverlap = true;
                     break;
                 }
+            }
+        }
+        return foundOverlap;
+    }
+
+    public boolean checkOverlapWithCircle(List<Circle> circlesInImage, Circle newCircle){
+        boolean foundOverlap = false;
+        for(int i=0; i<circlesInImage.size() && !foundOverlap; i++){
+            Circle cx = circlesInImage.get(i);
+            if(checkOverlap(cx,newCircle)){
+                foundOverlap = true;
+                break;
             }
         }
         return foundOverlap;
